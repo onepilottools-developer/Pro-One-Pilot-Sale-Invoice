@@ -254,9 +254,10 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex-gap" style="flex-direction:column; align-items:flex-end;">
-                        <button class="btn btn-primary" onclick="downloadPDF('simple')"><i class="fas fa-file-alt"></i> Download Bill PDF</button>
-                        <button class="btn btn-danger" onclick="downloadPDF('profit')"><i class="fas fa-chart-line"></i> Download Profit PDF</button>
+                    <!-- ISSUE 1 FIXED: Button Alignment corrected -->
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="downloadPDF('simple')"><i class="fas fa-file-alt"></i> Bill PDF</button>
+                        <button class="btn btn-danger" onclick="downloadPDF('profit')"><i class="fas fa-chart-line"></i> Profit PDF</button>
                     </div>
                 </div>
             </div>
@@ -495,6 +496,7 @@
             if(!isoString) return "";
             const d = new Date(isoString);
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return `${d.getDate()}-${months[d.getMonth() हालत]}-${d.getFullYear()}`; // Changed this slightly to fit better
             return `${d.getDate()}-${months[d.getMonth()]}-${d.getFullYear()}`;
         };
 
@@ -979,7 +981,7 @@
                     tbody.innerHTML += `
                         <tr>
                             <td>${index + 1}</td>
-                            <td>${getDisplayDate(c.date)}</td>
+                            <td style="white-space: nowrap;">${getDisplayDate(c.date)}</td>
                             <td>${c.product}</td>
                             <td>${c.qty}</td>
                             <td>${c.price.toFixed(2)}</td>
@@ -1138,7 +1140,7 @@
                     tbody.innerHTML += `
                         <tr>
                             <td>${index + 1}</td>
-                            <td>${getDisplayDate(p.date)}</td>
+                            <td style="white-space: nowrap;">${getDisplayDate(p.date)}</td>
                             <td>${p.product}</td>
                             <td>${p.qty}</td>
                             <td>${p.price.toFixed(2)}</td>
@@ -1215,6 +1217,7 @@
             updateReportDOM();
         };
 
+        // ISSUE 2 FIXED: Added white-space: nowrap to Date column
         const updateReportDOM = () => {
             const tbody = document.getElementById('salesReportList');
             tbody.innerHTML = '';
@@ -1227,7 +1230,7 @@
                 const originalIndex = sales.indexOf(s);
                 tbody.innerHTML += `
                     <tr>
-                        <td>${getDisplayDate(s.date)}</td>
+                        <td style="white-space: nowrap;">${getDisplayDate(s.date)}</td>
                         <td style="color:#2563eb; font-weight:600;">${s.customer || '-'}</td>
                         <td style="font-weight:600">${s.name}</td>
                         <td>${s.qty}</td>
@@ -1235,7 +1238,7 @@
                         <td>${s.sp.toFixed(2)}</td>
                         <td>${s.total.toFixed(2)}</td>
                         <td style="color:${s.profit >= 0 ? 'green':'red'}">${s.profit.toFixed(2)}</td>
-                        <td>
+                        <td style="white-space: nowrap;">
                             <button class="action-btn" style="background:var(--warning)" onclick="editSale(${originalIndex})"><i class="fas fa-pencil-alt"></i></button>
                             <button class="action-btn" style="background:var(--danger)" onclick="deleteSale(${originalIndex})"><i class="fas fa-trash"></i></button>
                         </td>
