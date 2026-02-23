@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro POS System (Final V12 - Date Range Added)</title>
+    
+    <!-- Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root { --primary: #2563eb; --secondary: #64748b; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --purple: #8b5cf6; --bg: #f1f5f9; --surface: #ffffff; --border: #e2e8f0; --text: #0f172a; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { width: 260px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; box-shadow: 4px 0 24px rgba(0,0,0,0.02); z-index: 10; flex-shrink: 0; }
+        .logo { font-size: 26px; font-weight: 800; color: var(--primary); margin-bottom: 30px; text-align: center; border: 1px dashed transparent; padding: 10px; cursor: text; letter-spacing: -0.5px; }
+        .logo:hover { border-color: var(--border); background: #f8fafc; border-radius: 8px; }
+        
+        .nav-btn { padding: 16px; margin-bottom: 8px; border: none; background: transparent; text-align: left; cursor: pointer; border-radius: 10px; color: var(--secondary); font-size: 15px; font-weight: 500; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px; }
+        .nav-btn:hover { background-color: #eff6ff; color: var(--primary); }
+        .nav-btn.active { background-color: var(--primary); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+        
+        .backup-section { margin-top: auto; border-top: 1px solid var(--border); padding-top: 20px; }
+        .backup-btn { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .backup-btn-save { background: #f0fdf4; color: #166534; border-color: #bbf7d0; } .backup-btn-save:hover { background: #dcfce7; }
+        .backup-btn-restore { background: #fff1f2; color: #9f1239; border-color: #fecdd3; } .backup-btn-restore:hover { background: #fee2e2; }
+        
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; position: relative; }
+        .section { display: none; animation: fadeIn 0.3s ease; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        input[type="date"] { font-family: 'Segoe UI', sans-serif; font-weight: 600; color: var(--text); background: white; padding: 8px 15px; border-radius: 8px; border: 1px solid var(--border); outline: none; cursor: pointer; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); max-width: 100%; }
+        
+        /* OVERFLOW HIDDEN TO AUTO - PREVENTS TABLE FROM PUSHING OUT */
+        .card { background: var(--surface); border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); border: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; }
+        
+        /* FLEX WRAP ADDED TO STOP STRETCHING */
+        .charts-row { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+        .chart-card { flex: 1; min-width: 300px; background: white; border-radius: 16px; padding: 20px; border: 1px solid var(--border); height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        input[type="text"], input[type="number"], select { width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 10px; outline: none; transition: all 0.2s; font-size: 14px; background: #f8fafc; min-width: 120px; }
+        input:focus, select:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        
+        /* PREVENT BUTTON SQUASHING */
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; justify-content: center; transition: transform 0.2s; white-space: nowrap; flex-shrink: 0; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-purple { background: var(--purple); color: white; }
+        
+        table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; min-width: 600px; }
+        th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background-color: #f8fafc; color: var(--secondary); font-weight: 600; font-size: 13px; text-transform: uppercase; }
+        td { font-size: 14px; }
+        
+        /* PREVENT BILLING GRID FROM BREAKING */
+        .pos-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: 25px; height: calc(100vh - 120px); min-height: 500px; }
+        .product-list { overflow-y: auto; max-height: 100%; }
+        .cart-panel { display: flex; flex-direction: column; height: 100%; overflow-y: auto;}
+        .cart-items { flex: 1; overflow-y: auto; margin-bottom: 20px; min-height: 150px; }
+        
+        .total-section { background: #f1f5f9; padding: 24px; border-radius: 16px; margin-top: auto; }
+        .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 15px; color: var(--secondary); }
+        .grand-total { font-size: 28px; font-weight: 800; color: var(--text); border-top: 2px dashed var(--border); padding-top: 15px; margin-top: 10px; }
+        
+        .popup { position: fixed; top: 25px; right: 25px; background: white; padding: 20px 25px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border-left: 6px solid var(--danger); display: none; z-index: 1000; animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideIn { from { transform: translateX(120%); } to { transform: translateX(0); } }
+        
+        .stock-indicator { padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+        .stock-ok { background: #dcfce7; color: #166534; }
+        .stock-low { background: #fee2e2; color: #991b1b; }
+        .action-btn { width: 32px; height: 32px; border: none; border-radius: 8px; cursor: pointer; margin-right: 5px; color: white; display: inline-flex; align-items: center; justify-content: center; }
+        
+        /* ADDED WRAP TO PREVENT SQUASHING OF BUTTONS/INPUTS */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .flex-gap { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+        .status-unpaid { background: #fee2e2; color: #991b1b; }
+        .status-paid { background: #dcfce7; color: #166534; }
+
+        /* Sale Edit Form */
+        #saleEditForm {
+            display: none;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo" id="shopName" contenteditable="true" onblur="saveShopName()"><i class="fas fa-layer-group"></i> One Pilot POS</div>
+        
+        <div style="flex:1">
+            <button class="nav-btn active" onclick="showSection('billing')"><i class="fas fa-cash-register"></i> Billing</button>
+            <button class="nav-btn" onclick="showSection('inventory')"><i class="fas fa-box-open"></i> Inventory</button>
+            <button class="nav-btn" onclick="showSection('reports')"><i class="fas fa-chart-pie"></i> Analytics & Report</button>
+            <button class="nav-btn" onclick="showSection('credit')"><i class="fas fa-user-clock"></i> Credit / Udhar List</button>
+            <button class="nav-btn" onclick="showSection('purchasing')"><i class="fas fa-shopping-bag"></i> Purchasing List</button>
+        </div>
+
+        <div class="backup-section">
+            <h4 style="margin-bottom:10px; font-size:12px; color:var(--secondary); text-transform:uppercase;">Data Protection</h4>
+            <button class="backup-btn backup-btn-save" onclick="backupData()"><i class="fas fa-download"></i> Download Backup</button>
+            <button class="backup-btn backup-btn-restore" onclick="document.getElementById('importFile').click()"><i class="fas fa-upload"></i> Restore Data</button>
+            <input type="file" id="importFile" style="display:none" onchange="restoreData(this)" accept=".json">
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        
+        <div class="header">
+            <h2 id="page-title" style="font-weight: 700; color: var(--text);">Billing Counter</h2>
+        </div>
+
+        <div id="stockAlert" class="popup">
+            <div style="font-weight:bold; font-size:16px; margin-bottom:5px;">Attention Needed</div>
+            <span id="alertMsg">Stock is low.</span>
+        </div>
+
+        <!-- 1. BILLING SECTION -->
+        <div id="billing" class="section active">
+            <div class="pos-grid">
+                <div class="card product-list">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <input type="text" id="posSearch" placeholder="🔍 Search product (Press Enter to Add)" onkeyup="renderPOSProducts()">
+                    </div>
+                    <table id="posProductTable" style="min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Stock</th>
+                                <th>Price</th>
+                                <th style="width: 80px;">Add</th>
+                            </tr>
+                        </thead>
+                        <tbody id="posProductList"></tbody>
+                    </table>
+                </div>
+
+                <div class="card cart-panel">
+                    <div class="flex-between" style="margin-bottom: 20px;">
+                        <h3>Current Order</h3>
+                        <div style="text-align: right;">
+                            <label style="font-size: 12px; color: var(--secondary); display: block; margin-bottom: 4px;">Invoice Date:</label>
+                            <input type="date" id="billingDate">
+                        </div>
+                    </div>
+
+                    <div class="cart-items">
+                        <table id="cartTable" style="min-width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cartList"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- BILLING CUSTOMER INFO -->
+                    <div style="margin-bottom: 15px; background: #fff7ed; padding: 15px; border-radius: 10px; border: 1px solid #ffedd5;">
+                        <label style="font-size: 13px; font-weight: bold; color: #9a3412; margin-bottom: 8px; display: block;">Customer Info (For Bill & Report)</label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="billCustName" placeholder="Customer Name / Phone" style="flex: 1; border-color: #fdba74;">
+                        </div>
+                    </div>
+
+                    <div class="total-section">
+                        <div class="total-row">
+                            <span>Subtotal</span>
+                            <span id="cartTotal">0.00</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Total</span>
+                            <span id="grandTotal">0.00</span>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 20px; padding: 16px;" onclick="checkout()">
+                            <i class="fas fa-check-circle"></i> Complete Payment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. INVENTORY SECTION -->
+        <div id="inventory" class="section">
+            <div class="card">
+                <div class="flex-between" style="margin-bottom: 20px;">
+                    <h3 id="invFormTitle">Manage Inventory</h3>
+                    <div class="flex-gap">
+                        <button class="btn btn-success" onclick="downloadInventoryExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                        <button class="btn btn-danger" onclick="downloadInventoryPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                    </div>
+                </div>
+                
+                <!-- Added flex-wrap to prevent input squashing -->
+                <div class="row" style="display:flex; gap:15px; margin-bottom:15px; flex-wrap: wrap;">
+                    <div style="flex:2; min-width:200px;"><input type="text" id="invName" placeholder="Product Name"></div>
+                    <div style="flex:1; min-width:150px;"><input type="number" id="invUP" placeholder="Cost Price (In)"></div>
+                    <div style="flex:1; min-width:150px;"><input type="number" id="invSP" placeholder="Sale Price (Out)"></div>
+                </div>
+                <div class="row" style="display:flex; gap:15px; flex-wrap: wrap;">
+                    <div style="flex:1; min-width:150px;"><input type="number" id="invQty" placeholder="Quantity (Press Enter to Save)"></div>
+                    <div style="flex:1; min-width:150px; display:flex; gap:10px;">
+                        <button id="saveBtn" class="btn btn-success" style="width:100%" onclick="saveProduct()"><i class="fas fa-plus"></i> Save</button>
+                        <button id="cancelBtn" class="btn btn-danger" style="display:none;" onclick="cancelEdit()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="invSearch" placeholder="🔍 Search Inventory..." onkeyup="renderInventory()">
+                </div>
+                <table style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Cost</th>
+                            <th>Sale Price</th>
+                            <th>Stock</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. REPORTS SECTION -->
+        <div id="reports" class="section">
+            <!-- NEW DATE RANGE HEADER -->
+            <div class="card" style="margin-bottom:20px; padding:15px; border-color:var(--primary);">
+                <div class="flex-between">
+                    <div>
+                        <h3 style="color:var(--primary); font-size:16px; margin-bottom:5px;">Filter Data</h3>
+                        <div class="flex-gap" style="align-items:center;">
+                            <!-- Daily Filter -->
+                            <div style="border-right:1px solid #ccc; padding-right:15px; margin-right:10px;">
+                                <label style="font-size:11px; font-weight:bold; color:var(--secondary)">Single Day:</label><br>
+                                <input type="date" id="systemDate" onchange="renderReports()">
+                            </div>
+                            <!-- Range Filter -->
+                            <div style="display:flex; gap:5px; align-items:center; flex-wrap: wrap;">
+                                <div>
+                                    <label style="font-size:11px; font-weight:bold; color:var(--secondary)">From:</label><br>
+                                    <input type="date" id="startDate">
+                                </div>
+                                <div>
+                                    <label style="font-size:11px; font-weight:bold; color:var(--secondary)">To:</label><br>
+                                    <input type="date" id="endDate">
+                                </div>
+                                <button class="btn btn-success" style="height:38px; margin-top:16px;" onclick="filterByRange()">
+                                    <i class="fas fa-search"></i> View
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-gap" style="align-items:flex-end;">
+                        <button class="btn btn-primary" onclick="downloadPDF('simple')"><i class="fas fa-file-alt"></i> Download Bill PDF</button>
+                        <button class="btn btn-danger" onclick="downloadPDF('profit')"><i class="fas fa-chart-line"></i> Download Profit PDF</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SALE EDIT FORM -->
+            <div id="saleEditForm">
+                <h4 style="margin-bottom:10px; color:#d97706;"><i class="fas fa-edit"></i> Edit Transaction</h4>
+                <div class="row" style="display:flex; gap:15px; flex-wrap: wrap;">
+                    <div style="flex:2; min-width:200px;">
+                        <label style="font-size:12px">Product</label>
+                        <input type="text" id="editSaleName" readonly style="background:#e5e7eb; cursor:not-allowed;">
+                    </div>
+                    <div style="flex:1; min-width:100px;">
+                        <label style="font-size:12px">New Qty</label>
+                        <input type="number" id="editSaleQty">
+                    </div>
+                    <div style="flex:1; min-width:100px;">
+                        <label style="font-size:12px">New Sale Price</label>
+                        <input type="number" id="editSaleSP">
+                    </div>
+                    <div style="flex:1; min-width:150px; display:flex; align-items:flex-end; gap:5px;">
+                        <button class="btn btn-success" onclick="saveSaleUpdate()">Update</button>
+                        <button class="btn btn-secondary" style="background:#64748b; color:white;" onclick="closeSaleEdit()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h4 style="margin-bottom:15px; color:var(--secondary);">Top Selling Products (Qty)</h4>
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h4 style="margin-bottom:15px; color:var(--secondary);">Sales Contribution (%)</h4>
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="card" style="flex:1; min-width:200px; background:#eff6ff; border:1px solid #bfdbfe; text-align:center;">
+                    <div style="color:var(--secondary); font-size:14px;">Total Sales</div>
+                    <div style="color:var(--primary); font-size:28px; font-weight:bold;" id="reportSales">0.00</div>
+                </div>
+                <!-- Box removed from UI as per your feedback, logic kept inside PDF only -->
+                <div class="card" style="flex:1; min-width:200px; background:#f0fdf4; border:1px solid #bbf7d0; text-align:center;">
+                    <div style="color:var(--secondary); font-size:14px;">Net Profit</div>
+                    <div style="color:var(--success); font-size:28px; font-weight:bold;" id="reportProfit">0.00</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin-bottom:15px;">Transaction History (<span id="reportDateDisplay"></span>)</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Customer / Phone</th>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Cost</th>
+                            <th>Sale</th>
+                            <th>Total</th>
+                            <th>Profit</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesReportList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. CREDIT / UDHAR SECTION -->
+        <div id="credit" class="section">
+            <div class="card">
+                <h3 style="margin-bottom:20px; color:#f59e0b;"><i class="fas fa-user-clock"></i> Manual Credit / Udhar Entry</h3>
+                <div class="row" style="display:flex; gap:15px; align-items:flex-end; flex-wrap: wrap;">
+                    
+                    <div style="flex:1; min-width:130px;">
+                        <label style="font-size:12px; font-weight:bold;">Date</label>
+                        <input type="date" id="crDate">
+                    </div>
+
+                    <div style="flex:2; min-width:200px;">
+                        <label style="font-size:12px; font-weight:bold;">Select Product</label>
+                        <select id="crProd" onchange="fillCreditPrice()">
+                            <option value="">-- Select Product --</option>
+                        </select>
+                    </div>
+                    <div style="flex:0.7; min-width:100px;">
+                        <label style="font-size:12px; font-weight:bold;">Qty</label>
+                        <input type="number" id="crQty" placeholder="0">
+                    </div>
+                    <div style="flex:0.7; min-width:100px;">
+                        <label style="font-size:12px; font-weight:bold;">Price</label>
+                        <input type="number" id="crPrice" placeholder="0.00">
+                    </div>
+                    
+                    <div style="flex:1.5; min-width:150px;">
+                        <label style="font-size:12px; font-weight:bold;">Customer Name</label>
+                        <input type="text" id="crName" placeholder="Name" list="savedNames" onchange="autoFillPhone()">
+                        <datalist id="savedNames"></datalist>
+                    </div>
+                    <div style="flex:1.5; min-width:150px;">
+                        <label style="font-size:12px; font-weight:bold;">Phone</label>
+                        <input type="text" id="crPhone" placeholder="Phone" list="savedPhones">
+                        <datalist id="savedPhones"></datalist>
+                    </div>
+
+                    <div style="flex:1; min-width:120px;">
+                        <button id="addCreditBtn" class="btn btn-warning" onclick="addManualCredit()" style="width:100%; height:45px;"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:15px; margin-bottom:15px;">
+                    <h3 style="color:#f59e0b; margin:0;">Credit / Udhar List</h3>
+                    <button class="btn btn-danger" onclick="downloadCreditPDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <input type="text" id="creditSearch" placeholder="🔍 Search by Name or Phone Number..." onkeyup="renderCreditList()">
+                </div>
+                
+                <table style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>SR</th>
+                            <th>DATE</th>
+                            <th>PRODUCT</th>
+                            <th>QTY</th>
+                            <th>SALE</th>
+                            <th>TOTAL</th>
+                            <th>NAME</th>
+                            <th>PHONE</th>
+                            <th>STATUS</th>
+                            <th>ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody id="creditListBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. PURCHASING LIST SECTION -->
+        <div id="purchasing" class="section">
+            <div class="card">
+                <h3 style="margin-bottom:20px; color:var(--purple);"><i class="fas fa-shopping-bag"></i> Manual Purchasing Entry</h3>
+                <div class="row" style="display:flex; gap:15px; align-items:flex-end; flex-wrap: wrap;">
+                    
+                    <div style="flex:1; min-width:130px;">
+                        <label style="font-size:12px; font-weight:bold;">Date</label>
+                        <input type="date" id="purDate">
+                    </div>
+
+                    <div style="flex:2; min-width:200px;">
+                        <label style="font-size:12px; font-weight:bold;">Product (Select or Type)</label>
+                        <input type="text" id="purProd" list="purProductList" placeholder="Enter Product Name" onchange="fillPurchasingPrice()">
+                        <datalist id="purProductList"></datalist>
+                    </div>
+                    <div style="flex:0.7; min-width:100px;">
+                        <label style="font-size:12px; font-weight:bold;">Pack</label>
+                        <input type="number" id="purQty" placeholder="0">
+                    </div>
+                    <div style="flex:0.7; min-width:100px;">
+                        <label style="font-size:12px; font-weight:bold;">Cost</label>
+                        <input type="number" id="purPrice" placeholder="0.00">
+                    </div>
+                    
+                    <div style="flex:2; min-width:150px;">
+                        <label style="font-size:12px; font-weight:bold;">Supplier Name</label>
+                        <input type="text" id="purName" placeholder="Name" list="savedSuppliers">
+                        <datalist id="savedSuppliers"></datalist>
+                    </div>
+
+                    <div style="flex:1; min-width:120px;">
+                        <button id="addPurchasingBtn" class="btn btn-purple" onclick="addPurchasing()" style="width:100%; height:45px;"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:15px; margin-bottom:15px;">
+                    <h3 style="color:var(--purple); margin:0;">Purchasing List</h3>
+                    <button class="btn btn-danger" onclick="downloadPurchasingPDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <input type="text" id="purchasingSearch" placeholder="🔍 Search by Supplier Name..." onkeyup="renderPurchasingList()">
+                </div>
+                
+                <table style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>SR</th>
+                            <th>DATE</th>
+                            <th>PRODUCT</th>
+                            <th>QTY</th>
+                            <th>COST</th>
+                            <th>TOTAL</th>
+                            <th>SUPPLIER NAME</th>
+                            <th>STATUS</th>
+                            <th>ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchasingListBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let products = JSON.parse(localStorage.getItem('products')) || [];
+        let sales = JSON.parse(localStorage.getItem('sales')) || [];
+        let credits = JSON.parse(localStorage.getItem('credits')) || [];
+        let purchases = JSON.parse(localStorage.getItem('purchases')) || [];
+
+        let cart = [];
+        let editingIndex = null;
+        let editingSaleIndex = null; 
+        let editingCreditIndex = null;
+        let editingPurchasingIndex = null;
+        let barChartInstance = null;
+        let pieChartInstance = null;
+        
+        // This variable holds the data currently shown in Reports for PDF export
+        let currentFilteredSales = [];
+        let reportTitleDate = "";
+
+        const getLocalISODate = () => {
+            const date = new Date();
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().split('T')[0];
+        }
+
+        const getDisplayDate = (isoString) => {
+            if(!isoString) return "";
+            const d = new Date(isoString);
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return `${d.getDate()}-${months[d.getMonth()]}-${d.getFullYear()}`;
+        };
+
+        const initSystem = () => {
+            const today = getLocalISODate();
+            document.getElementById('systemDate').value = today;
+            document.getElementById('billingDate').value = today;
+            document.getElementById('crDate').value = today;
+            document.getElementById('purDate').value = today;
+            
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+
+            loadShopName();
+            renderPOSProducts();
+            setupEnterKeys(); 
+            updateAutoComplete(); 
+            updateSupplierAutoComplete();
+        };
+
+        const updateAutoComplete = () => {
+            const uniqueNames = [...new Set(credits.map(c => c.name).filter(n => n))];
+            const uniquePhones = [...new Set(credits.map(c => c.phone).filter(p => p))];
+
+            const nameList = document.getElementById('savedNames');
+            nameList.innerHTML = '';
+            uniqueNames.forEach(n => nameList.innerHTML += `<option value="${n}">`);
+
+            const phoneList = document.getElementById('savedPhones');
+            phoneList.innerHTML = '';
+            uniquePhones.forEach(p => phoneList.innerHTML += `<option value="${p}">`);
+        };
+
+        const updateSupplierAutoComplete = () => {
+            const uniqueSuppliers = [...new Set(purchases.map(p => p.name).filter(n => n))];
+            const supplierList = document.getElementById('savedSuppliers');
+            supplierList.innerHTML = '';
+            uniqueSuppliers.forEach(n => supplierList.innerHTML += `<option value="${n}">`);
+        };
+
+        const autoFillPhone = () => {
+            const nameVal = document.getElementById('crName').value;
+            const match = credits.find(c => c.name === nameVal);
+            if(match && match.phone) {
+                document.getElementById('crPhone').value = match.phone;
+            }
+        };
+
+        const setupEnterKeys = () => {
+            const invInputs = ['invName', 'invUP', 'invSP', 'invQty'];
+            invInputs.forEach(id => {
+                document.getElementById(id).addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') saveProduct();
+                });
+            });
+            document.getElementById('posSearch').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    const searchVal = this.value.toLowerCase();
+                    const firstMatch = products.find(p => p.name.toLowerCase().includes(searchVal));
+                    if(firstMatch) {
+                        addToCart(firstMatch.id);
+                        this.value = ''; 
+                        renderPOSProducts();
+                    }
+                }
+            });
+            const crInputs = ['crQty', 'crPrice', 'crName', 'crPhone'];
+            crInputs.forEach(id => {
+                document.getElementById(id).addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') addManualCredit();
+                });
+            });
+            document.getElementById('purProd').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    fillPurchasingPrice();
+                    document.getElementById('purQty').focus();
+                }
+            });
+            document.getElementById('purQty').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') document.getElementById('purPrice').focus();
+            });
+            document.getElementById('purPrice').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') addPurchasing();
+            });
+            document.getElementById('purName').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') addPurchasing();
+            });
+        };
+
+        const loadShopName = () => {
+            const name = localStorage.getItem('shopName');
+            if(name) document.getElementById('shopName').innerHTML = `<i class="fas fa-layer-group"></i> ${name}`;
+        }
+
+        const saveShopName = () => {
+            const text = document.getElementById('shopName').innerText.replace(' PRO POS', '').trim();
+            localStorage.setItem('shopName', text);
+        }
+
+        const saveData = () => {
+            localStorage.setItem('products', JSON.stringify(products));
+            localStorage.setItem('sales', JSON.stringify(sales));
+            localStorage.setItem('credits', JSON.stringify(credits));
+            localStorage.setItem('purchases', JSON.stringify(purchases));
+            updateAutoComplete(); 
+            updateSupplierAutoComplete();
+        };
+
+        const backupData = () => {
+            const dataToSave = { 
+                shopName: localStorage.getItem('shopName'), 
+                products: products, 
+                sales: sales, 
+                credits: credits,
+                purchases: purchases
+            };
+            const blob = new Blob([JSON.stringify(dataToSave)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `POS_Backup_${getDisplayDate(getLocalISODate())}.json`;
+            a.click();
+        };
+
+        const restoreData = (input) => {
+            if(!input.files.length) return;
+            if(!confirm("Warning: Restoring data will DELETE current data. Continue?")) { input.value = ''; return; }
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(data.products && data.sales) {
+                        products = data.products;
+                        sales = data.sales;
+                        if(data.credits) credits = data.credits;
+                        if(data.purchases) purchases = data.purchases;
+                        if(data.shopName) localStorage.setItem('shopName', data.shopName);
+                        saveData();
+                        alert("Data Restored Successfully!");
+                        location.reload();
+                    } else { alert("Invalid Backup File!"); }
+                } catch(err) { alert("Error reading file!"); }
+            };
+            reader.readAsText(file);
+        };
+
+        const showSection = (id) => {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            let title = id.charAt(0).toUpperCase() + id.slice(1);
+            if(id === 'billing') title = 'Billing Counter';
+            if(id === 'credit') title = 'Credit / Udhar List';
+            if(id === 'purchasing') title = 'Purchasing List';
+            document.getElementById('page-title').innerText = title;
+            
+            if(id === 'billing') renderPOSProducts();
+            if(id === 'inventory') renderInventory();
+            if(id === 'reports') renderReports();
+            if(id === 'credit') {
+                renderCreditProductDropdown(); 
+                renderCreditList();
+            }
+            if(id === 'purchasing') {
+                renderPurchasingProductDropdown(); 
+                renderPurchasingList();
+            }
+        };
+
+        const showAlert = (msg) => {
+            const alertBox = document.getElementById('stockAlert');
+            document.getElementById('alertMsg').innerText = msg;
+            alertBox.style.display = 'block';
+            setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
+        };
+
+        // --- INVENTORY LOGIC ---
+        const saveProduct = () => {
+            const name = document.getElementById('invName').value;
+            const up = parseFloat(document.getElementById('invUP').value);
+            const sp = parseFloat(document.getElementById('invSP').value);
+            const qty = parseInt(document.getElementById('invQty').value);
+
+            if (!name || isNaN(up) || isNaN(sp) || isNaN(qty)) { alert("Please fill all fields!"); return; }
+
+            if (editingIndex !== null) {
+                const pid = products[editingIndex].id;
+                products[editingIndex].name = name;
+                products[editingIndex].up = up;
+                products[editingIndex].sp = sp;
+                products[editingIndex].stock = qty; 
+
+                const cartItem = cart.find(c => c.id === pid);
+                if(cartItem) {
+                    cartItem.name = name;
+                    cartItem.up = up;
+                    cartItem.sp = sp;
+                    if(cartItem.qty > qty) cartItem.qty = qty; 
+                }
+                alert("Updated & Synced!");
+                cancelEdit();
+            } else {
+                const existing = products.find(p => p.name.toLowerCase() === name.toLowerCase());
+                if (existing) {
+                    existing.stock += qty;
+                    existing.up = up; existing.sp = sp;
+                    alert("Stock Added!");
+                } else {
+                    products.push({ id: Date.now(), name, up, sp, stock: qty });
+                    alert("Product Created!");
+                }
+            }
+            saveData(); renderInventory(); renderCart(); renderPOSProducts();
+            if(editingIndex === null) resetInvForm();
+        };
+
+        const editProduct = (index) => {
+            const p = products[index];
+            document.getElementById('invName').value = p.name;
+            document.getElementById('invUP').value = p.up;
+            document.getElementById('invSP').value = p.sp;
+            document.getElementById('invQty').value = p.stock;
+            editingIndex = index;
+            document.getElementById('invFormTitle').innerText = "Edit Product";
+            document.getElementById('saveBtn').innerHTML = '<i class="fas fa-save"></i> Update';
+            document.getElementById('saveBtn').classList.replace('btn-success', 'btn-warning');
+            document.getElementById('cancelBtn').style.display = 'block';
+            window.scrollTo(0,0);
+        };
+
+        const cancelEdit = () => {
+            editingIndex = null; resetInvForm();
+            document.getElementById('invFormTitle').innerText = "Manage Inventory";
+            document.getElementById('saveBtn').innerHTML = '<i class="fas fa-plus"></i> Save';
+            document.getElementById('saveBtn').classList.replace('btn-warning', 'btn-success');
+            document.getElementById('cancelBtn').style.display = 'none';
+        };
+
+        const resetInvForm = () => {
+            document.getElementById('invName').value = '';
+            document.getElementById('invUP').value = '';
+            document.getElementById('invSP').value = '';
+            document.getElementById('invQty').value = '';
+        };
+
+        const renderInventory = () => {
+            const search = document.getElementById('invSearch') ? document.getElementById('invSearch').value.toLowerCase() : '';
+            const tbody = document.getElementById('inventoryList');
+            tbody.innerHTML = '';
+            products.forEach((p, index) => {
+                if (p.name.toLowerCase().includes(search)) {
+                    const stockClass = p.stock < 5 ? 'stock-low' : 'stock-ok';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:600">${p.name}</td>
+                            <td>${p.up.toFixed(2)}</td>
+                            <td>${p.sp.toFixed(2)}</td>
+                            <td><span class="stock-indicator ${stockClass}">${p.stock}</span></td>
+                            <td>
+                                <button class="action-btn" style="background:var(--warning)" onclick="editProduct(${index})"><i class="fas fa-pen"></i></button>
+                                <button class="action-btn" style="background:var(--danger)" onclick="deleteProduct(${index})"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+        };
+
+        const deleteProduct = (index) => { 
+            if(confirm('Delete product?')) { 
+                const pid = products[index].id;
+                products.splice(index, 1);
+                cart = cart.filter(c => c.id !== pid);
+                saveData(); renderInventory(); renderCart(); renderPOSProducts();
+            } 
+        };
+
+        const downloadInventoryExcel = () => {
+            let csvContent = "data:text/csv;charset=utf-8,Product Name,Cost Price,Sale Price,Current Stock\n"; 
+            products.forEach(p => { csvContent += `${p.name},${p.up},${p.sp},${p.stock}\n`; });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Inventory_List.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        const downloadInventoryPDF = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(20); doc.setTextColor(37, 99, 235); doc.text("Inventory Report", 14, 20);
+            doc.setFontSize(11); doc.setTextColor(100); doc.text("Date: " + getDisplayDate(getLocalISODate()), 14, 30);
+            const tableColumn = ["Product Name", "Cost (In)", "Sale (Out)", "Current Stock"];
+            const tableRows = [];
+            let totalStock = 0;
+            products.forEach(p => { 
+                tableRows.push([p.name, p.up.toFixed(2), p.sp.toFixed(2), p.stock]); 
+                totalStock += p.stock;
+            });
+            doc.autoTable({ 
+                head: [tableColumn], 
+                body: tableRows, 
+                startY: 40, 
+                theme: 'grid',
+                foot: [['', '', 'TOTAL STOCK:', totalStock]], 
+                footStyles: { fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 }
+            });
+            doc.save("Inventory_Report.pdf");
+        };
+
+        // POS Logic
+        const renderPOSProducts = () => {
+            const search = document.getElementById('posSearch').value.toLowerCase();
+            const tbody = document.getElementById('posProductList');
+            tbody.innerHTML = '';
+            products.filter(p => p.name.toLowerCase().includes(search)).forEach(p => {
+                tbody.innerHTML += `<tr><td style="font-weight:500">${p.name}</td><td style="color: ${p.stock < 5 ? 'red' : 'green'}; font-weight:bold;">${p.stock}</td><td>${p.sp.toFixed(2)}</td><td><button class="btn btn-primary" style="padding:6px 12px" onclick="addToCart(${p.id})"><i class="fas fa-plus"></i></button></td></tr>`;
+            });
+        };
+
+        const addToCart = (id) => {
+            const product = products.find(p => p.id === id);
+            if (product.stock <= 0) { alert("Out of Stock!"); return; }
+            const existing = cart.find(c => c.id === id);
+            if (existing) { if (existing.qty < product.stock) existing.qty++; else { alert("Stock limit reached!"); return; } } 
+            else { cart.push({ id: product.id, name: product.name, sp: product.sp, up: product.up, qty: 1 }); }
+            renderCart();
+        };
+
+        const renderCart = () => {
+            const tbody = document.getElementById('cartList');
+            tbody.innerHTML = '';
+            let total = 0;
+            cart.forEach((item, index) => {
+                const itemTotal = item.sp * item.qty;
+                total += itemTotal;
+                tbody.innerHTML += `<tr><td>${item.name}</td><td><input type="number" min="1" value="${item.qty}" style="width:60px; padding:6px;" onchange="updateCartQty(${index}, this.value)"></td><td>${item.sp.toFixed(2)}</td><td style="font-weight:600">${itemTotal.toFixed(2)}</td><td><i class="fas fa-times" style="color:var(--danger); cursor:pointer;" onclick="removeFromCart(${index})"></i></td></tr>`;
+            });
+            document.getElementById('cartTotal').innerText = total.toFixed(2);
+            document.getElementById('grandTotal').innerText = total.toFixed(2);
+        };
+
+        const updateCartQty = (idx, val) => {
+            const qty = parseInt(val);
+            const product = products.find(p => p.id === cart[idx].id);
+            if (qty > product.stock) { alert("Stock limit!"); renderCart(); return; }
+            if (qty < 1) { removeFromCart(idx); return; }
+            cart[idx].qty = qty; renderCart();
+        };
+
+        const removeFromCart = (idx) => { cart.splice(idx, 1); renderCart(); };
+
+        const checkout = () => {
+            if (cart.length === 0) { alert("Cart empty!"); return; }
+            const billingDate = document.getElementById('billingDate').value || getLocalISODate();
+            const custName = document.getElementById('billCustName').value || "-";
+
+            if (!confirm(`Confirm Sale for ${getDisplayDate(billingDate)}?`)) return;
+            cart.forEach(item => {
+                const product = products.find(p => p.id === item.id);
+                product.stock -= item.qty;
+                if(product.stock < 5) showAlert(`${product.name} is Low Stock!`);
+                sales.push({ 
+                    date: billingDate, 
+                    name: item.name, 
+                    qty: item.qty, 
+                    up: item.up, 
+                    sp: item.sp, 
+                    total: item.sp * item.qty, 
+                    profit: (item.sp - item.up) * item.qty,
+                    customer: custName 
+                });
+            });
+            saveData(); 
+            cart = []; 
+            document.getElementById('billCustName').value = "";
+            renderCart(); renderPOSProducts(); alert("Success!");
+        };
+
+        // --- CREDIT / UDHAR LOGIC ---
+        
+        const renderCreditProductDropdown = () => {
+            const select = document.getElementById('crProd');
+            select.innerHTML = '<option value="">-- Select Product --</option>';
+            products.forEach(p => {
+                select.innerHTML += `<option value="${p.name}">${p.name} (Stock: ${p.stock})</option>`;
+            });
+        };
+
+        const fillCreditPrice = () => {
+            const select = document.getElementById('crProd');
+            const selectedName = select.value;
+            const product = products.find(p => p.name === selectedName);
+            if(product) {
+                document.getElementById('crPrice').value = product.sp;
+            } else {
+                document.getElementById('crPrice').value = '';
+            }
+        };
+
+        const addManualCredit = () => {
+            const date = document.getElementById('crDate').value || getLocalISODate(); 
+            const prod = document.getElementById('crProd').value; 
+            const qty = parseInt(document.getElementById('crQty').value);
+            const price = parseFloat(document.getElementById('crPrice').value);
+            const name = document.getElementById('crName').value;
+            const phone = document.getElementById('crPhone').value;
+
+            if(!prod || isNaN(qty) || isNaN(price) || !name || !phone) {
+                alert("Please select product and fill all fields");
+                return;
+            }
+
+            if(editingCreditIndex !== null) {
+                credits[editingCreditIndex].date = date; 
+                credits[editingCreditIndex].product = prod;
+                credits[editingCreditIndex].qty = qty;
+                credits[editingCreditIndex].price = price;
+                credits[editingCreditIndex].total = qty * price;
+                credits[editingCreditIndex].name = name;
+                credits[editingCreditIndex].phone = phone;
+                
+                alert("Credit Updated!");
+                editingCreditIndex = null;
+                document.getElementById('addCreditBtn').innerHTML = '<i class="fas fa-plus"></i> Add';
+            } else {
+                credits.push({
+                    id: Date.now(),
+                    date: date,
+                    product: prod,
+                    qty: qty,
+                    price: price,
+                    total: qty * price,
+                    name: name,
+                    phone: phone,
+                    status: 'Unpaid'
+                });
+                alert("Credit Added!");
+            }
+
+            document.getElementById('crProd').value = '';
+            document.getElementById('crQty').value = '';
+            document.getElementById('crPrice').value = '';
+            document.getElementById('crName').value = '';
+            document.getElementById('crPhone').value = '';
+
+            saveData();
+            renderCreditList();
+        };
+
+        const editCredit = (index) => {
+            const c = credits[index];
+            document.getElementById('crDate').value = c.date || getLocalISODate(); 
+            document.getElementById('crProd').value = c.product;
+            document.getElementById('crQty').value = c.qty;
+            document.getElementById('crPrice').value = c.price;
+            document.getElementById('crName').value = c.name || ""; 
+            document.getElementById('crPhone').value = c.phone || ""; 
+            
+            editingCreditIndex = index;
+            document.getElementById('addCreditBtn').innerHTML = '<i class="fas fa-save"></i> Update';
+            window.scrollTo(0, document.getElementById('credit').offsetTop);
+        };
+
+        const renderCreditList = () => {
+            const search = document.getElementById('creditSearch').value.toLowerCase();
+            const tbody = document.getElementById('creditListBody');
+            tbody.innerHTML = '';
+            
+            credits.forEach((c, index) => {
+                const cName = c.name || ""; 
+                const cPhone = c.phone || "";
+                
+                if(cName.toLowerCase().includes(search) || cPhone.includes(search) || c.product.toLowerCase().includes(search)) {
+                    const statusClass = 'status-unpaid';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${getDisplayDate(c.date)}</td>
+                            <td>${c.product}</td>
+                            <td>${c.qty}</td>
+                            <td>${c.price.toFixed(2)}</td>
+                            <td style="font-weight:bold;">${c.total.toFixed(2)}</td>
+                            <td>${cName}</td>
+                            <td>${cPhone}</td>
+                            <td>
+                                <span class="status-badge ${statusClass}" onclick="toggleCreditStatus(${index})">
+                                    ${c.status}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="action-btn" style="background:var(--warning)" onclick="editCredit(${index})"><i class="fas fa-pencil-alt"></i></button>
+                                <button class="action-btn" style="background:var(--danger)" onclick="deleteCredit(${index})"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+        };
+
+        const toggleCreditStatus = (index) => {
+            if(confirm("Mark this as PAID and remove from list?")) {
+                credits.splice(index, 1);
+                saveData();
+                renderCreditList();
+            }
+        };
+
+        const deleteCredit = (index) => {
+            if(confirm("Delete this credit record?")) {
+                credits.splice(index, 1);
+                saveData();
+                renderCreditList();
+            }
+        };
+
+        const downloadCreditPDF = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(20); doc.setTextColor(245, 158, 11); doc.text("Credit / Udhar List", 14, 20);
+            doc.setFontSize(11); doc.setTextColor(100); doc.text("Date: " + getDisplayDate(getLocalISODate()), 14, 30);
+            
+            const tableColumn = ["SR", "Date", "Product", "Qty", "Total", "Name", "Phone"];
+            const tableRows = [];
+            let totalQty = 0;
+            let totalAmount = 0;
+            
+            credits.forEach((c, i) => {
+                tableRows.push([i+1, getDisplayDate(c.date), c.product, c.qty, c.total.toFixed(2), c.name, c.phone]);
+                totalQty += c.qty;
+                totalAmount += c.total;
+            });
+
+            doc.autoTable({ 
+                head: [tableColumn], 
+                body: tableRows, 
+                startY: 40, 
+                theme: 'grid',
+                headStyles: { fillColor: [245, 158, 11] },
+                foot: [['', '', 'TOTAL:', totalQty, totalAmount.toFixed(2), '', '']], 
+                footStyles: { fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 }
+            });
+            doc.save("Udhar_List.pdf");
+        };
+
+        // --- PURCHASING LIST LOGIC ---
+
+        const renderPurchasingProductDropdown = () => {
+            const list = document.getElementById('purProductList');
+            list.innerHTML = '';
+            products.forEach(p => {
+                list.innerHTML += `<option value="${p.name}">`;
+            });
+        };
+
+        const fillPurchasingPrice = () => {
+            const val = document.getElementById('purProd').value;
+            const product = products.find(p => p.name === val);
+            if(product) {
+                document.getElementById('purPrice').value = product.up; 
+            }
+        };
+
+        const addPurchasing = () => {
+            const date = document.getElementById('purDate').value || getLocalISODate(); 
+            const prod = document.getElementById('purProd').value; 
+            const qty = parseInt(document.getElementById('purQty').value);
+            const price = parseFloat(document.getElementById('purPrice').value);
+            let name = document.getElementById('purName').value;
+
+            if(!name) name = "General Supplier";
+
+            if(!prod || isNaN(qty) || isNaN(price)) {
+                alert("Please fill Product, Qty and Cost!");
+                return;
+            }
+
+            if(editingPurchasingIndex !== null) {
+                purchases[editingPurchasingIndex].date = date; 
+                purchases[editingPurchasingIndex].product = prod;
+                purchases[editingPurchasingIndex].qty = qty;
+                purchases[editingPurchasingIndex].price = price;
+                purchases[editingPurchasingIndex].total = qty * price;
+                purchases[editingPurchasingIndex].name = name;
+                
+                alert("Purchase Record Updated!");
+                editingPurchasingIndex = null;
+                document.getElementById('addPurchasingBtn').innerHTML = '<i class="fas fa-plus"></i> Add';
+            } else {
+                purchases.push({
+                    id: Date.now(),
+                    date: date,
+                    product: prod,
+                    qty: qty,
+                    price: price,
+                    total: qty * price,
+                    name: name,
+                    status: 'Received'
+                });
+            }
+
+            document.getElementById('purProd').value = '';
+            document.getElementById('purQty').value = '';
+            document.getElementById('purPrice').value = '';
+            document.getElementById('purName').value = '';
+            document.getElementById('purProd').focus();
+
+            saveData();
+            renderPurchasingList();
+        };
+
+        const editPurchasing = (index) => {
+            const p = purchases[index];
+            document.getElementById('purDate').value = p.date || getLocalISODate(); 
+            document.getElementById('purProd').value = p.product;
+            document.getElementById('purQty').value = p.qty;
+            document.getElementById('purPrice').value = p.price;
+            document.getElementById('purName').value = p.name || ""; 
+            
+            editingPurchasingIndex = index;
+            document.getElementById('addPurchasingBtn').innerHTML = '<i class="fas fa-save"></i> Update';
+            window.scrollTo(0, document.getElementById('purchasing').offsetTop);
+        };
+
+        const renderPurchasingList = () => {
+            const search = document.getElementById('purchasingSearch').value.toLowerCase();
+            const tbody = document.getElementById('purchasingListBody');
+            tbody.innerHTML = '';
+            
+            purchases.forEach((p, index) => {
+                const pName = p.name || ""; 
+                
+                if(pName.toLowerCase().includes(search) || p.product.toLowerCase().includes(search)) {
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${getDisplayDate(p.date)}</td>
+                            <td>${p.product}</td>
+                            <td>${p.qty}</td>
+                            <td>${p.price.toFixed(2)}</td>
+                            <td style="font-weight:bold;">${p.total.toFixed(2)}</td>
+                            <td>${pName}</td>
+                            <td><span style="background:#e0e7ff; color:#3730a3; padding:5px 10px; border-radius:15px; font-size:11px; font-weight:700;">${p.status}</span></td>
+                            <td>
+                                <button class="action-btn" style="background:var(--warning)" onclick="editPurchasing(${index})"><i class="fas fa-pencil-alt"></i></button>
+                                <button class="action-btn" style="background:var(--danger)" onclick="deletePurchasing(${index})"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+        };
+
+        const deletePurchasing = (index) => {
+            if(confirm("Delete this purchasing record?")) {
+                purchases.splice(index, 1);
+                saveData();
+                renderPurchasingList();
+            }
+        };
+
+        const downloadPurchasingPDF = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(20); doc.setTextColor(139, 92, 246); doc.text("Purchasing List", 14, 20);
+            doc.setFontSize(11); doc.setTextColor(100); doc.text("Date: " + getDisplayDate(getLocalISODate()), 14, 30);
+            
+            const tableColumn = ["SR", "Date", "Product", "Qty", "Cost", "Total", "Supplier"];
+            const tableRows = [];
+            let totalQty = 0;
+            let totalAmount = 0;
+            
+            purchases.forEach((p, i) => {
+                tableRows.push([i+1, getDisplayDate(p.date), p.product, p.qty, p.price.toFixed(2), p.total.toFixed(2), p.name]);
+                totalQty += p.qty;
+                totalAmount += p.total;
+            });
+
+            doc.autoTable({ 
+                head: [tableColumn], 
+                body: tableRows, 
+                startY: 40, 
+                theme: 'grid',
+                headStyles: { fillColor: [139, 92, 246] },
+                foot: [['', '', 'TOTAL:', totalQty, '', totalAmount.toFixed(2), '']], 
+                footStyles: { fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 }
+            });
+            doc.save("Purchasing_List.pdf");
+        };
+
+        // --- REPORTS & CHARTS (UPDATED FOR RANGE) ---
+        
+        const filterByRange = () => {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            if(!start || !end) { alert("Please select Start and End date"); return; }
+            if(start > end) { alert("Start date cannot be after End date"); return; }
+            
+            currentFilteredSales = sales.filter(s => s.date >= start && s.date <= end);
+            reportTitleDate = `From: ${getDisplayDate(start)} To: ${getDisplayDate(end)}`;
+            
+            updateReportDOM();
+        };
+
+        const renderReports = () => {
+            const selectedISODate = document.getElementById('systemDate').value;
+            
+            currentFilteredSales = sales.filter(s => s.date === selectedISODate);
+            reportTitleDate = getDisplayDate(selectedISODate);
+
+            updateReportDOM();
+        };
+
+        const updateReportDOM = () => {
+            const tbody = document.getElementById('salesReportList');
+            tbody.innerHTML = '';
+            document.getElementById('reportDateDisplay').innerText = reportTitleDate;
+            
+            let totalSales = 0, totalProfit = 0;
+            
+            currentFilteredSales.forEach((s) => {
+                totalSales += s.total; totalProfit += s.profit;
+                const originalIndex = sales.indexOf(s);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${getDisplayDate(s.date)}</td>
+                        <td style="color:#2563eb; font-weight:600;">${s.customer || '-'}</td>
+                        <td style="font-weight:600">${s.name}</td>
+                        <td>${s.qty}</td>
+                        <td>${s.up.toFixed(2)}</td>
+                        <td>${s.sp.toFixed(2)}</td>
+                        <td>${s.total.toFixed(2)}</td>
+                        <td style="color:${s.profit >= 0 ? 'green':'red'}">${s.profit.toFixed(2)}</td>
+                        <td>
+                            <button class="action-btn" style="background:var(--warning)" onclick="editSale(${originalIndex})"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="action-btn" style="background:var(--danger)" onclick="deleteSale(${originalIndex})"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+            document.getElementById('reportSales').innerText = totalSales.toFixed(2);
+            document.getElementById('reportProfit').innerText = totalProfit.toFixed(2);
+            updateCharts(currentFilteredSales);
+        };
+
+        const editSale = (index) => {
+            editingSaleIndex = index;
+            const sale = sales[index];
+            document.getElementById('editSaleName').value = sale.name;
+            document.getElementById('editSaleQty').value = sale.qty;
+            document.getElementById('editSaleSP').value = sale.sp;
+            document.getElementById('saleEditForm').style.display = 'block';
+            window.location.hash = "saleEditForm";
+        };
+
+        const closeSaleEdit = () => {
+            document.getElementById('saleEditForm').style.display = 'none';
+            editingSaleIndex = null;
+        };
+
+        const saveSaleUpdate = () => {
+            if(editingSaleIndex === null) return;
+            const sale = sales[editingSaleIndex];
+            const newQty = parseInt(document.getElementById('editSaleQty').value);
+            const newSP = parseFloat(document.getElementById('editSaleSP').value);
+            if(newQty < 1 || isNaN(newSP)) { alert("Invalid Input"); return; }
+            const product = products.find(p => p.name === sale.name);
+            if(product) { product.stock += sale.qty; product.stock -= newQty; }
+            sale.qty = newQty; sale.sp = newSP; sale.total = newQty * newSP; sale.profit = (newSP - sale.up) * newQty;
+            saveData(); closeSaleEdit(); renderReports(); renderInventory(); alert("Transaction Updated!");
+        };
+
+        const deleteSale = (index) => { 
+            if(confirm('Delete record? Stock will be restored.')) { 
+                const sale = sales[index];
+                const product = products.find(p => p.name === sale.name);
+                if(product) product.stock += sale.qty; 
+                sales.splice(index, 1); 
+                saveData(); renderReports(); renderInventory();
+            } 
+        };
+
+        const updateCharts = (data) => {
+            const productStats = {}; let totalQty = 0;
+            data.forEach(item => {
+                if(!productStats[item.name]) { productStats[item.name] = { qty: 0, total: 0 }; }
+                productStats[item.name].qty += item.qty; productStats[item.name].total += item.total; totalQty += item.qty;
+            });
+            const labels = Object.keys(productStats);
+            const qtys = labels.map(l => productStats[l].qty);
+            const percentages = labels.map(l => totalQty > 0 ? ((productStats[l].qty / totalQty) * 100).toFixed(1) : 0);
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            if(barChartInstance) barChartInstance.destroy();
+            barChartInstance = new Chart(ctxBar, { type: 'bar', data: { labels: labels, datasets: [{ label: 'Qty Sold', data: qtys, backgroundColor: '#2563eb', borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } } } } });
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            if(pieChartInstance) pieChartInstance.destroy();
+            pieChartInstance = new Chart(ctxPie, { type: 'doughnut', data: { labels: labels, datasets: [{ data: percentages, backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10 } } } } });
+        };
+
+        const downloadPDF = (type) => {
+            if(currentFilteredSales.length === 0) { alert("No data to download!"); return; }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const shopTitle = document.getElementById('shopName').innerText.trim() || "Sales Report";
+            doc.setFontSize(20); doc.setTextColor(37, 99, 235); doc.text(shopTitle, 14, 20);
+            doc.setFontSize(11); doc.setTextColor(100); doc.text("Report: " + reportTitleDate, 14, 30);
+            
+            let tableColumn = [];
+            let tableRows = [];
+            let totalS = 0, totalP = 0, totalQty = 0;
+
+            if(type === 'simple') {
+                tableColumn = ["Date", "Customer", "Product", "Qty", "Sale", "Total"];
+                currentFilteredSales.forEach(s => {
+                    tableRows.push([getDisplayDate(s.date), s.customer || '-', s.name, s.qty, s.sp.toFixed(2), s.total.toFixed(2)]);
+                    totalS += s.total;
+                    totalQty += s.qty;
+                });
+                doc.autoTable({ 
+                    head: [tableColumn], body: tableRows, startY: 40, theme: 'grid', styles: { fontSize: 10 }, headStyles: { fillColor: [37, 99, 235] }, 
+                    foot: [['', '', 'TOTAL:', totalQty, '', totalS.toFixed(2)]], footStyles: { fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 } 
+                });
+            } else {
+                tableColumn = ["Date", "Customer", "Product", "Qty", "Sale", "Total", "Profit"];
+                currentFilteredSales.forEach(s => {
+                    tableRows.push([getDisplayDate(s.date), s.customer || '-', s.name, s.qty, s.sp.toFixed(2), s.total.toFixed(2), s.profit.toFixed(2)]);
+                    totalS += s.total; totalP += s.profit; totalQty += s.qty;
+                });
+                doc.autoTable({ 
+                    head: [tableColumn], body: tableRows, startY: 40, theme: 'grid', styles: { fontSize: 10 }, headStyles: { fillColor: [37, 99, 235] }, 
+                    foot: [['', '', 'TOTAL:', totalQty, '', totalS.toFixed(2), totalP.toFixed(2)]], footStyles: { fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 } 
+                });
+            }
+            const cleanTitle = reportTitleDate.replace(/[^a-zA-Z0-9]/g, "_");
+            doc.save(`Sales_${type}_${cleanTitle}.pdf`);
+        };
+
+        initSystem();
+        document.querySelector('.nav-btn.active').click();
+    </script>
+</body>
+</html>
