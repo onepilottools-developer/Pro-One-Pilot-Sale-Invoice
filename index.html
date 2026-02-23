@@ -227,38 +227,42 @@
 
         <!-- 3. REPORTS SECTION -->
         <div id="reports" class="section">
-            <!-- NEW DATE RANGE HEADER -->
+            
+            <!-- FIXED DATE RANGE HEADER - ADDED FLEX-WRAP SO IT DOESN'T PUSH BUTTONS OUT -->
             <div class="card" style="margin-bottom:20px; padding:15px; border-color:var(--primary);">
-                <div class="flex-between">
-                    <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    
+                    <div style="flex: 1; min-width: 350px;">
                         <h3 style="color:var(--primary); font-size:16px; margin-bottom:5px;">Filter Data</h3>
-                        <div class="flex-gap" style="align-items:center;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
                             <!-- Daily Filter -->
-                            <div style="border-right:1px solid #ccc; padding-right:15px; margin-right:10px;">
+                            <div style="border-right:1px solid #ccc; padding-right:15px;">
                                 <label style="font-size:11px; font-weight:bold; color:var(--secondary)">Single Day:</label><br>
-                                <input type="date" id="systemDate" onchange="renderReports()">
+                                <input type="date" id="systemDate" onchange="renderReports()" style="width: 140px;">
                             </div>
                             <!-- Range Filter -->
                             <div style="display:flex; gap:5px; align-items:center;">
                                 <div>
                                     <label style="font-size:11px; font-weight:bold; color:var(--secondary)">From:</label><br>
-                                    <input type="date" id="startDate">
+                                    <input type="date" id="startDate" style="width: 140px;">
                                 </div>
                                 <div>
                                     <label style="font-size:11px; font-weight:bold; color:var(--secondary)">To:</label><br>
-                                    <input type="date" id="endDate">
+                                    <input type="date" id="endDate" style="width: 140px;">
                                 </div>
-                                <button class="btn btn-success" style="height:38px; margin-top:16px;" onclick="filterByRange()">
+                                <button class="btn btn-success" style="height:38px; margin-top:16px; white-space: nowrap;" onclick="filterByRange()">
                                     <i class="fas fa-search"></i> View
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <!-- ISSUE 1 FIXED: Button Alignment corrected -->
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary" onclick="downloadPDF('simple')"><i class="fas fa-file-alt"></i> Bill PDF</button>
-                        <button class="btn btn-danger" onclick="downloadPDF('profit')"><i class="fas fa-chart-line"></i> Profit PDF</button>
+                    
+                    <!-- Buttons are side by side and will wrap to next line if screen is small -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="downloadPDF('simple')" style="white-space: nowrap;"><i class="fas fa-file-alt"></i> Download Bill PDF</button>
+                        <button class="btn btn-danger" onclick="downloadPDF('profit')" style="white-space: nowrap;"><i class="fas fa-chart-line"></i> Download Profit PDF</button>
                     </div>
+
                 </div>
             </div>
 
@@ -481,7 +485,6 @@
         let barChartInstance = null;
         let pieChartInstance = null;
         
-        // This variable holds the data currently shown in Reports for PDF export
         let currentFilteredSales = [];
         let reportTitleDate = "";
 
@@ -496,7 +499,6 @@
             if(!isoString) return "";
             const d = new Date(isoString);
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            return `${d.getDate()}-${months[d.getMonth() हालत]}-${d.getFullYear()}`; // Changed this slightly to fit better
             return `${d.getDate()}-${months[d.getMonth()]}-${d.getFullYear()}`;
         };
 
@@ -507,7 +509,6 @@
             document.getElementById('crDate').value = today;
             document.getElementById('purDate').value = today;
             
-            // Initial Range defaults (optional)
             document.getElementById('startDate').value = today;
             document.getElementById('endDate').value = today;
 
@@ -1217,7 +1218,6 @@
             updateReportDOM();
         };
 
-        // ISSUE 2 FIXED: Added white-space: nowrap to Date column
         const updateReportDOM = () => {
             const tbody = document.getElementById('salesReportList');
             tbody.innerHTML = '';
@@ -1228,6 +1228,7 @@
             currentFilteredSales.forEach((s) => {
                 totalSales += s.total; totalProfit += s.profit;
                 const originalIndex = sales.indexOf(s);
+                // ISSUE 2 FIXED: Added white-space: nowrap to Date column
                 tbody.innerHTML += `
                     <tr>
                         <td style="white-space: nowrap;">${getDisplayDate(s.date)}</td>
