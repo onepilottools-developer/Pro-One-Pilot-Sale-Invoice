@@ -104,7 +104,7 @@
     <div class="main-content">
         
         <div class="header">
-            <h2 id="page-title" style="font-weight: 700; color: var(--text);">Billing Counter</h2>
+            <h2 id="page-title" style="font-weight: 700; color: var(--text);">Billing</h2>
         </div>
 
         <div id="stockAlert" class="popup">
@@ -184,8 +184,12 @@
         <!-- 2. INVENTORY SECTION -->
         <div id="inventory" class="section">
             <div class="card">
-                <div class="flex-between" style="margin-bottom: 20px;">
-                    <h3 id="invFormTitle">Manage Inventory</h3>
+                <!-- ADDED STOCK VALUE DISPLAY IN HEADER -->
+                <div class="flex-between" style="margin-bottom: 20px; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <h3 id="invFormTitle" style="margin:0;">Manage Inventory</h3>
+                        <span style="background:#e0e7ff; color:#3730a3; padding:6px 12px; border-radius:15px; font-size:12px; font-weight:700;">Stock Value: <span id="totalInvValue">0.00</span></span>
+                    </div>
                     <div class="flex-gap">
                         <button class="btn btn-success" onclick="downloadInventoryExcel()"><i class="fas fa-file-excel"></i> Excel</button>
                         <button class="btn btn-danger" onclick="downloadInventoryPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
@@ -333,7 +337,6 @@
         <div id="credit" class="section">
             <div class="card">
                 <h3 style="margin-bottom:20px; color:#f59e0b;"><i class="fas fa-user-clock"></i> Manual Credit / Udhar Entry</h3>
-                <!-- ADDED FLEX-WRAP AND MIN-WIDTHS SO INPUTS DON'T SQUISH -->
                 <div class="row" style="display:flex; gap:15px; align-items:flex-end; flex-wrap: wrap;">
                     
                     <div style="flex:1; min-width: 120px;">
@@ -406,7 +409,6 @@
         <div id="purchasing" class="section">
             <div class="card">
                 <h3 style="margin-bottom:20px; color:var(--purple);"><i class="fas fa-shopping-bag"></i> Manual Purchasing Entry</h3>
-                <!-- ADDED FLEX-WRAP AND MIN-WIDTHS SO INPUTS DON'T SQUISH -->
                 <div class="row" style="display:flex; gap:15px; align-items:flex-end; flex-wrap: wrap;">
                     
                     <div style="flex:1; min-width: 120px;">
@@ -484,7 +486,6 @@
         let barChartInstance = null;
         let pieChartInstance = null;
         
-        // This variable holds the data currently shown in Reports for PDF export
         let currentFilteredSales = [];
         let reportTitleDate = "";
 
@@ -509,7 +510,6 @@
             document.getElementById('crDate').value = today;
             document.getElementById('purDate').value = today;
             
-            // Initial Range defaults (optional)
             document.getElementById('startDate').value = today;
             document.getElementById('endDate').value = today;
 
@@ -747,11 +747,17 @@
             document.getElementById('invQty').value = '';
         };
 
+        // RENDER INVENTORY + STOCK VALUE CALCULATION
         const renderInventory = () => {
             const search = document.getElementById('invSearch') ? document.getElementById('invSearch').value.toLowerCase() : '';
             const tbody = document.getElementById('inventoryList');
             tbody.innerHTML = '';
+            
+            let totalVal = 0; // Tracking Stock Value
+
             products.forEach((p, index) => {
+                totalVal += (p.stock * p.up); // Add cost value of each product
+                
                 if (p.name.toLowerCase().includes(search)) {
                     const stockClass = p.stock < 5 ? 'stock-low' : 'stock-ok';
                     tbody.innerHTML += `
@@ -768,6 +774,10 @@
                     `;
                 }
             });
+
+            // Updating stock value element
+            const totalInvElem = document.getElementById('totalInvValue');
+            if(totalInvElem) totalInvElem.innerText = totalVal.toFixed(2);
         };
 
         const deleteProduct = (index) => { 
@@ -798,17 +808,22 @@
             doc.setFontSize(11); doc.setTextColor(100); doc.text("Date: " + getDisplayDate(getLocalISODate()), 14, 30);
             const tableColumn = ["Product Name", "Cost (In)", "Sale (Out)", "Current Stock"];
             const tableRows = [];
+            
             let totalStock = 0;
+            let totalValue = 0;
+            
             products.forEach(p => { 
                 tableRows.push([p.name, p.up.toFixed(2), p.sp.toFixed(2), p.stock]); 
                 totalStock += p.stock;
+                totalValue += (p.stock * p.up);
             });
+            
             doc.autoTable({ 
                 head: [tableColumn], 
                 body: tableRows, 
                 startY: 40, 
                 theme: 'grid',
-                foot: [['', '', 'TOTAL STOCK:', totalStock]], 
+                foot: [['', 'TOTAL VALUE:', totalValue.toFixed(2), totalStock]], 
                 footStyles: { fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 }
             });
             doc.save("Inventory_Report.pdf");
@@ -856,27 +871,42 @@
 
         const removeFromCart = (idx) => { cart.splice(idx, 1); renderCart(); };
 
+        // CHECKOUT LOGIC WITH GROUPING
         const checkout = () => {
             if (cart.length === 0) { alert("Cart empty!"); return; }
             const billingDate = document.getElementById('billingDate').value || getLocalISODate();
             const custName = document.getElementById('billCustName').value || "-";
 
             if (!confirm(`Confirm Sale for ${getDisplayDate(billingDate)}?`)) return;
+            
             cart.forEach(item => {
                 const product = products.find(p => p.id === item.id);
                 product.stock -= item.qty;
                 if(product.stock < 5) showAlert(`${product.name} is Low Stock!`);
-                sales.push({ 
-                    date: billingDate, 
-                    name: item.name, 
-                    qty: item.qty, 
-                    up: item.up, 
-                    sp: item.sp, 
-                    total: item.sp * item.qty, 
-                    profit: (item.sp - item.up) * item.qty,
-                    customer: custName 
-                });
+                
+                // Grouping logic: check if this item is already sold today to the same customer at the same sale price
+                let existingSale = sales.find(s => s.date === billingDate && s.name === item.name && s.customer === custName && s.sp === item.sp);
+                
+                if (existingSale) {
+                    // Update existing record
+                    existingSale.qty += item.qty;
+                    existingSale.total += (item.sp * item.qty);
+                    existingSale.profit += ((item.sp - item.up) * item.qty);
+                } else {
+                    // Create new record
+                    sales.push({ 
+                        date: billingDate, 
+                        name: item.name, 
+                        qty: item.qty, 
+                        up: item.up, 
+                        sp: item.sp, 
+                        total: item.sp * item.qty, 
+                        profit: (item.sp - item.up) * item.qty,
+                        customer: custName 
+                    });
+                }
             });
+            
             saveData(); 
             cart = []; 
             document.getElementById('billCustName').value = "";
@@ -1272,9 +1302,23 @@
             const newSP = parseFloat(document.getElementById('editSaleSP').value);
             if(newQty < 1 || isNaN(newSP)) { alert("Invalid Input"); return; }
             const product = products.find(p => p.name === sale.name);
-            if(product) { product.stock += sale.qty; product.stock -= newQty; }
-            sale.qty = newQty; sale.sp = newSP; sale.total = newQty * newSP; sale.profit = (newSP - sale.up) * newQty;
-            saveData(); closeSaleEdit(); renderReports(); renderInventory(); alert("Transaction Updated!");
+            
+            // Adjusting logic for updating grouped items
+            if(product) { 
+                product.stock += sale.qty; // return old qty
+                product.stock -= newQty;   // deduct new qty
+            }
+            
+            sale.qty = newQty; 
+            sale.sp = newSP; 
+            sale.total = newQty * newSP; 
+            sale.profit = (newSP - sale.up) * newQty;
+            
+            saveData(); 
+            closeSaleEdit(); 
+            renderReports(); 
+            renderInventory(); 
+            alert("Transaction Updated!");
         };
 
         const deleteSale = (index) => { 
